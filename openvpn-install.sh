@@ -225,86 +225,6 @@ else
 		read -p "DNS [1-5]: " -e -i 1 DNS
 	done
 	echo ""
-	echo "See https://github.com/Angristan/OpenVPN-install#encryption to learn more about "
-	echo "the encryption in OpenVPN and the choices I made in this script."
-	echo "Please note that all the choices proposed are secure (to a different degree)"
-	echo "and are still viable to date, unlike some default OpenVPN options"
-	echo ''
-	echo "Choose which cipher you want to use for the data channel:"
-	echo "   1) AES-128-CBC (fastest and sufficiently secure for everyone, recommended)"
-	echo "   2) AES-192-CBC"
-	echo "   3) AES-256-CBC"
-	echo "Alternatives to AES, use them only if you know what you're doing."
-	echo "They are relatively slower but as secure as AES."
-	echo "   4) CAMELLIA-128-CBC"
-	echo "   5) CAMELLIA-192-CBC"
-	echo "   6) CAMELLIA-256-CBC"
-	echo "   7) SEED-CBC"
-	while [[ $CIPHER != "1" && $CIPHER != "2" && $CIPHER != "3" && $CIPHER != "4" && $CIPHER != "5" && $CIPHER != "6" && $CIPHER != "7" ]]; do
-		read -p "Cipher [1-7]: " -e -i 3 CIPHER
-	done
-	case $CIPHER in
-		1)
-		CIPHER="cipher AES-128-CBC"
-		;;
-		2)
-		CIPHER="cipher AES-192-CBC"
-		;;
-		3)
-		CIPHER="cipher AES-256-CBC"
-		;;
-		4)
-		CIPHER="cipher CAMELLIA-128-CBC"
-		;;
-		5)
-		CIPHER="cipher CAMELLIA-192-CBC"
-		;;
-		6)
-		CIPHER="cipher CAMELLIA-256-CBC"
-		;;
-		5)
-		CIPHER="cipher SEED-CBC"
-		;;
-	esac
-	echo ""
-	echo "Choose what size of Diffie-Hellman key you want to use:"
-	echo "   1) 2048 bits (fastest)"
-	echo "   2) 3072 bits (recommended, best compromise)"
-	echo "   3) 4096 bits (most secure)"
-	while [[ $DH_KEY_SIZE != "1" && $DH_KEY_SIZE != "2" && $DH_KEY_SIZE != "3" ]]; do
-		read -p "DH key size [1-3]: " -e -i 2 DH_KEY_SIZE
-	done
-	case $DH_KEY_SIZE in
-		1)
-		DH_KEY_SIZE="2048"
-		;;
-		2)
-		DH_KEY_SIZE="3072"
-		;;
-		3)
-		DH_KEY_SIZE="4096"
-		;;
-	esac
-	echo ""
-	echo "Choose what size of RSA key you want to use:"
-	echo "   1) 2048 bits (fastest)"
-	echo "   2) 3072 bits (recommended, best compromise)"
-	echo "   3) 4096 bits (most secure)"
-	while [[ $RSA_KEY_SIZE != "1" && $RSA_KEY_SIZE != "2" && $RSA_KEY_SIZE != "3" ]]; do
-		read -p "DH key size [1-3]: " -e -i 2 RSA_KEY_SIZE
-	done
-	case $RSA_KEY_SIZE in
-		1)
-		RSA_KEY_SIZE="2048"
-		;;
-		2)
-		RSA_KEY_SIZE="3072"
-		;;
-		3)
-		RSA_KEY_SIZE="4096"
-		;;
-	esac
-	echo ""
 	echo "Finally, tell me a name for the client certificate and configuration"
 	while [[ $CLIENT = "" ]]; do
 		echo "Please, use one word only, no special characters"
@@ -411,13 +331,13 @@ else
 	chown -R root:root /etc/openvpn/easy-rsa/
 #	rm -rf ~/EasyRSA-3.0.1.tgz
 	cd /etc/openvpn/easy-rsa/
-	echo "set_var EASYRSA_KEY_SIZE $RSA_KEY_SIZE" > vars
+#	echo "set_var EASYRSA_KEY_SIZE 3072" > vars
 	# Create the PKI, set up the CA, the DH params and the server + client certificates
 	easyrsa init-pki
-	easyrsa --batch build-ca nopass
-	openssl dhparam -out dh.pem $DH_KEY_SIZE
-	easyrsa build-server-full server nopass
-	easyrsa build-client-full $CLIENT nopass
+	easyrsa --keysize=3072 --batch build-ca nopass
+	openssl dhparam -out dh.pem 3072
+	easyrsa --keysize=3072 build-server-full server nopass
+	easyrsa --keysize=3072 build-client-full $CLIENT nopass
 	easyrsa gen-crl
 	# generate tls-auth key
 	openvpn --genkey --secret /etc/openvpn/tls-auth.key
@@ -713,7 +633,7 @@ tls-auth ../tls-auth.key 0 # This file is secret
 # Note that v2.4 client/server will automatically
 # negotiate AES-256-GCM in TLS mode.
 # See also the ncp-cipher option in the manpage
-$CIPHER
+cipher AES-256-CBC
 
 # Enable compression on the VPN link and push the
 # option to the client (v2.4+ only, for earlier
@@ -724,7 +644,7 @@ $CIPHER
 # For compression compatible with older clients use comp-lzo
 # If you enable it here, you must also
 # enable it in the client config file.
-;comp-lzo
+comp-lzo
 
 # The maximum number of concurrently connected
 # clients we want to allow.
@@ -780,11 +700,13 @@ explicit-exit-notify 1
 
 tls-server
 tls-version-min 1.2
-tls-cipher TLS-DHE-RSA-WITH-AES-128-GCM-SHA256
+;tls-cipher TLS-DHE-RSA-WITH-AES-128-GCM-SHA256
 crl-verify ../crl.pem
-auth SHA256
+auth SHA512
 
-push \"dhcp-option DOMAIN home\"" >> /etc/openvpn/server/server.conf
+push \"dhcp-option DOMAIN home\"
+sndbuf 0
+rcvbuf 0" >> /etc/openvpn/server/server.conf
 
 	# Create the sysctl configuration file if needed (mainly for Arch Linux)
 	if [[ ! -e $SYSCTL ]]; then
@@ -995,12 +917,12 @@ remote-cert-tls server
 # Note that v2.4 client/server will automatically
 # negotiate AES-256-GCM in TLS mode.
 # See also the ncp-cipher option in the manpage
-$CIPHER
+cipher AES-256-CBC
 
 # Enable compression on the VPN link.
 # Don't enable this unless it is also
 # enabled in the server config file.
-#comp-lzo
+comp-lzo
 
 # Set log file verbosity.
 verb 3
@@ -1009,12 +931,14 @@ verb 3
 ;mute 20" >> /etc/openvpn/client-template.txt
 
 	echo "" >> /etc/openvpn/client-template.txt
-	echo "auth SHA256
+	echo "auth SHA512
 tls-client
 tls-version-min 1.2
-tls-cipher TLS-DHE-RSA-WITH-AES-128-GCM-SHA256
+;tls-cipher TLS-DHE-RSA-WITH-AES-128-GCM-SHA256
 setenv opt block-outside-dns
-verb 3" >> /etc/openvpn/client-template.txt
+verb 3
+sndbuf 0
+rcvbuf 0" >> /etc/openvpn/client-template.txt
 
 	# Generate the custom client.ovpn
 	newclient "$CLIENT"
