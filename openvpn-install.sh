@@ -351,7 +351,7 @@ else
 	chmod 644 /etc/openvpn/crl.pem
 
 	# Generate server.conf
-	echo " #################################################
+	echo "#################################################
 # Sample OpenVPN 2.0 config file for            #
 # multi-client server.                          #
 #                                               #
@@ -807,7 +807,7 @@ rcvbuf 0" >> /etc/openvpn/server/server.conf
 		fi
 	fi
 	# client-template.txt is created so we have a template to add further users later
-	echo " ##############################################
+	echo "##############################################
 # Sample client-side OpenVPN 2.0 config file #
 # for connecting to multi-client server.     #
 #                                            #
